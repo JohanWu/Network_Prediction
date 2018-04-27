@@ -116,12 +116,12 @@ def main():
     	## node[0]: training samples, node[1]: validation samples, node[2]: testing samples
     	# plot_losses = rnn.PlotLosses()	# plot the loss by each iteration.
 
-		history = model.fit(node[0][:, :-1], node[0][:, -1], 
+		history = model.fit(node[0][:, :-1, :], node[0][:, -1, :], 
 			batch_size=BATCH_SIZE, 
 			epochs=EPOCHS, 
 			verbose=0,
 			# callbacks=[plot_losses], 
-			validation_data=(node[1][:, :-1], node[1][:, -1]))
+			validation_data=(node[1][:, :-1, :], node[1][:, -1, :]))
 		# plot_loss(i, history)
     
 	    ## predict the last latent feature vector for the node

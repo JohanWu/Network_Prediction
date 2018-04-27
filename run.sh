@@ -1,7 +1,10 @@
 #!/bin/bash
-iter=100
+iter=50
 
-for (( i=0; i<100; i=i+1 ))
+rm -f *~
+rm -f *.txt
+
+for (( i=0; i<iter; i=i+1 ))
 do
 #echo $i
 rm -f *.p
