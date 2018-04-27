@@ -18,7 +18,7 @@ P_IN = 0.8
 P_OUT = 0.1
 NUM_MOVING_NODES = 8	# usually 2*NUM_CLUSTERS
 FIRST_MOVING_NODE = 1	# ID of the first moving node
-TIME_PERIOD = 100
+TIME_PERIOD = 700
 
 class SyntheticNetwork(object):
 	'''For generating syhthetic network sequence.
