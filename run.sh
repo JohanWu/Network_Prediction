@@ -1,5 +1,5 @@
 #!/bin/bash
-iter=50
+iter=25
 
 rm -f *~
 rm -f *.txt
