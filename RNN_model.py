@@ -80,7 +80,7 @@ def generate_data(tn_lfv_seq, timestep, ratio_validation):
     data = list()
     for n in range(nt_lfv_seq.shape[0]):
         ### generate training samples, validation samples, and the testing sample for each node
-#         print((nt_lfv_seq[n]))
+        # print((nt_lfv_seq[n]))
         ## get data samples from the sequence
         ## the length of the subsequence of latent feature vectors is timestep+1. The last vector is the vector for the label.
         samples = list()        
@@ -108,7 +108,7 @@ def generate_data(tn_lfv_seq, timestep, ratio_validation):
         
         data.append((training, validation, testing))
         
-#         print("for node %d:" %n, data[n][0].shape, data[n][1].shape, data[n][2].shape)
+        # print("for node %d:" %n, data[n][0].shape, data[n][1].shape, data[n][2].shape)
 
     return data
 
