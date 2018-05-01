@@ -1,12 +1,16 @@
 import numpy as np
 import time
+import math
 import pickle
+import operator
+import pathlib
 
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot as plt
 
 from keras import backend as K
+from keras import layers
 
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import normalized_mutual_info_score
@@ -27,9 +31,13 @@ TIMESTEP = 4           # the length of input sequence
 RATIO_VALIDATION = 0.1 # the ratio of portion of samples as validation set
 
 ## RNN Hyperparameters
-HIDDEN_SIZE = 10
+HIDDEN_SIZE = 30
 BATCH_SIZE = 10
 EPOCHS = 30
+
+## top-K for link prediction
+K_ALL = [i for i in range(100, 5001, 100)]
+K_M_S = [i for i in range(5, 101, 5)]
 
 def laplacian_rnn():
 	pass
@@ -37,7 +45,7 @@ def laplacian_rnn():
 def adjacency_rnn():
 	pass
 
-def spectral_embedding_rnn(time_node_lfv):
+def spectral_embedding_rnn(time_node_lfv, rnn_cell):
 	## generate the data for RNN model training
 	## data is a list of tuples containing (training_samples, validation_samples, testing_sample) for nodes
 	## data[node][training;validation:testing].shape
@@ -66,7 +74,7 @@ def spectral_embedding_rnn(time_node_lfv):
 		print("\nNode %d:" %i)
 
 		## model building
-		model = rnn.build_model(LEN_LFV, HIDDEN_SIZE, TIMESTEP)
+		model = rnn.build_model(LEN_LFV, HIDDEN_SIZE, TIMESTEP, rnn_cell)
 
 		## model fitting
     	## node[0]: training samples, node[1]: validation samples, node[2]: testing samples
@@ -123,7 +131,81 @@ def community_prediction(predicted_lfv, actual_lfv ):
 	return nmi
 
 def link_prediction(predicted_lfv, actual_network):
-	print(len(actual_network.edges()))
+	'''Do link prediction tasks.
+
+	1. link prediction for the top-K links in the network.
+	2. link prediction for one stationary node's top-k neighbors. (node 0)
+	3. link prediction for one moving node's top-k neighbors. (node 1)
+	'''
+	precision_all, precision_moving, precision_stationary = list(), list(), list()
+	recall_all, recall_moving, recall_stationary = list(), list(), list()
+
+	## Compute similarity scores for all links
+	all_links = dict()
+	for i, lfv1 in enumerate(predicted_lfv):
+		for j, lfv2 in enumerate(predicted_lfv):
+			if i < j:
+				all_links[(i, j)] = np.dot(lfv1, lfv2)/(math.sqrt(np.dot(lfv1, lfv1))*math.sqrt(np.dot(lfv2, lfv2)))
+	sorted_links = sorted(all_links.items(), key=operator.itemgetter(1), reverse=True)
+	## link prediction for the network
+	for k in K_ALL:
+		correct = 0
+		for i, link in enumerate(sorted_links):
+			if i < k:
+				# print(link[0])
+				# print(actual_network.edges())
+				if link[0] in actual_network.edges():
+					correct += 1
+			else:
+				break
+		# print(correct)
+		precision_all.append(correct/k)
+		recall_all.append(correct/len(actual_network.edges()))
+	print('pre_all:', precision_all)
+	print('rec_all:', recall_all)
+
+	### link prediction for the stationary node (node 0) and for the moving node (node 1)
+	## find out the degrees of stationary node (0) and moving node (1).
+	degree_s, degree_m = 0, 0
+	for link in actual_network.edges():
+		if 0 in link:
+			degree_s += 1
+		if 1 in link:
+			degree_m += 1
+	# print(degree_s, degree_m)
+	## link prediction
+	for k in K_M_S:
+		correct_s, correct_m, i_s, i_m = 0, 0, 0, 0
+		for link in sorted_links:
+			if i_s < k:
+				if 0 in link[0]:	# link connecting with stationary node
+					# print('s', link)
+					i_s += 1
+					if link[0] in actual_network.edges():
+						correct_s += 1
+					# print(i_s, correct_s)
+					# input()
+			if i_m < k:
+				if 1 in link[0]:	# link connecting with moving node
+					# print('m', link)
+					i_m += 1
+					if link[0] in actual_network.edges():
+						correct_m += 1
+					# print(i_m, correct_m)
+					# input()
+			if not (i_s < k or i_m < k):
+				break
+		# print(correct_s, correct_m)
+		precision_stationary.append(correct_s/k)
+		recall_stationary.append(correct_s/degree_s)
+		precision_moving.append(correct_m/k)
+		recall_moving.append(correct_m/degree_m)
+	print('pre_sta:', precision_stationary)
+	print('rec_sta:', recall_stationary)
+	print('pre_mov:', precision_moving)
+	print('rec_mov:', recall_moving)
+
+	return precision_all, recall_all, precision_stationary, recall_stationary, precision_moving, recall_moving
 
 def plot_loss(i, history):
     ## list all data in history
@@ -163,24 +245,84 @@ def main():
 	## raw data
 	time_node_lfv = np.array(lfv_sequence)
 
+	## creat the folder Results/ if it doesn't exist
+	pathlib.Path('./Results/').mkdir(parents=True, exist_ok=True) 
+
 	## different predictive models
+	time1 = time.time()
 	predicted_lfv_sefir = spectral_embedding_fir_filter(time_node_lfv)
-	predicted_lfv_sernn = spectral_embedding_rnn(time_node_lfv)
-	
+	time2 = time.time()
+	predicted_lfv_sernn_gru = spectral_embedding_rnn(time_node_lfv, layers.GRU)
+	time3 = time.time()
+	predicted_lfv_sernn_lstm = spectral_embedding_rnn(time_node_lfv, layers.LSTM)
+	time4 = time.time()
+	with open('./Results/Training_time_fir.txt', 'a') as time_file:
+		time_file.write(str(time2-time1)+'\n')
+	with open('./Results/Training_time_rnn_gru.txt', 'a') as time_file:
+		time_file.write(str(time3-time2)+'\n')
+	with open('./Results/Training_time_rnn_lstm.txt', 'a') as time_file:
+		time_file.write(str(time4-time3)+'\n')
 
 	## community prediction for different predictive models
 	nmi_sefir = community_prediction(predicted_lfv_sefir, time_node_lfv[-1])
-	with open('NMI_SEFIR.txt', 'a') as nmi_file:
+	with open('./Results/NMI_SEFIR.txt', 'a') as nmi_file:
 		nmi_file.write(str(nmi_sefir)+'\n')
 
-	# nmi_sernn = community_prediction(predicted_lfv_sernn, time_node_lfv[-1])
-	with open('NMI_SERNN.txt', 'a') as nmi_file:
-		nmi_file.write(str(nmi_sernn)+'\n')
+	nmi_sernn_gru = community_prediction(predicted_lfv_sernn_gru, time_node_lfv[-1])
+	with open('./Results/NMI_SERNN_GRU.txt', 'a') as nmi_file:
+		nmi_file.write(str(nmi_sernn_gru)+'\n')
 
-	
+	nmi_sernn_lstm = community_prediction(predicted_lfv_sernn_lstm, time_node_lfv[-1])
+	with open('./Results/NMI_SERNN_LSTM.txt', 'a') as nmi_file:
+		nmi_file.write(str(nmi_sernn_lstm)+'\n')
+
 	## link prediction for different predictive models
-	# link_prediction(predicted_lfv_sefir, network_sequence[-1])
-	# link_prediction(predicted_lfv_sernn, network_sequence[-1])
+	pre_all, rec_all, pre_stationary, rec_stationary, pre_moving, rec_moving = link_prediction(predicted_lfv_sefir, network_sequence[-1])
+	with open('./Results/Precision_all_SEFIR.txt', 'a') as f:
+		f.write(str(pre_all)+'\n')
+	with open('./Results/Recall_all_SEFIR.txt', 'a') as f:
+		f.write(str(rec_all)+'\n')
+	with open('./Results/Precision_stationary_SEFIR.txt', 'a') as f:
+		f.write(str(pre_stationary)+'\n')
+	with open('./Results/Recall_stationary_SEFIR.txt', 'a') as f:
+		f.write(str(rec_stationary)+'\n')
+	with open('./Results/Precision_moving_SEFIR.txt', 'a') as f:
+		f.write(str(pre_moving)+'\n')
+	with open('./Results/Recall_moving_SEFIR.txt', 'a') as f:
+		f.write(str(rec_moving)+'\n')
+	
+	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction(predicted_lfv_sernn_gru, network_sequence[-1])
+	with open('./Results/Precision_all_SERNN_GRU.txt', 'a') as f:
+		f.write(str(pre_all)+'\n')
+	with open('./Results/Recall_all_SERNN_GRU.txt', 'a') as f:
+		f.write(str(rec_all)+'\n')
+	with open('./Results/Precision_stationary_SERNN_GRU.txt', 'a') as f:
+		f.write(str(pre_stationary)+'\n')
+	with open('./Results/Recall_stationary_SERNN_GRU.txt', 'a') as f:
+		f.write(str(rec_stationary)+'\n')
+	with open('./Results/Precision_moving_SERNN_GRU.txt', 'a') as f:
+		f.write(str(pre_moving)+'\n')
+	with open('./Results/Recall_moving_SERNN_GRU.txt', 'a') as f:
+		f.write(str(rec_moving)+'\n')
+	
+	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction(predicted_lfv_sernn_lstm, network_sequence[-1])
+	with open('./Results/Precision_all_SERNN_LSTM.txt', 'a') as f:
+		f.write(str(pre_all)+'\n')
+	with open('./Results/Recall_all_SERNN_LSTM.txt', 'a') as f:
+		f.write(str(rec_all)+'\n')
+	with open('./Results/Precision_stationary_SERNN_LSTM.txt', 'a') as f:
+		f.write(str(pre_stationary)+'\n')
+	with open('./Results/Recall_stationary_SERNN_LSTM.txt', 'a') as f:
+		f.write(str(rec_stationary)+'\n')
+	with open('./Results/Precision_moving_SERNN_LSTM.txt', 'a') as f:
+		f.write(str(pre_moving)+'\n')
+	with open('./Results/Recall_moving_SERNN_LSTM.txt', 'a') as f:
+		f.write(str(rec_moving)+'\n')
+	
+	## link prediction by the commom neigbors approach based on the previous network
+		
+	## link prediction by previous network
+
 
 if __name__ == '__main__':
 	main()
