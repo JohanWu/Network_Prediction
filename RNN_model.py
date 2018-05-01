@@ -12,8 +12,8 @@ from IPython.display import clear_output
 
 
 ## Different RNN cells: GRU or SimpleRNN.
-RNN = layers.LSTM
-
+# RNN = layers.GRU
+# RNN = layers.LSTM
 
 ## updatable plot
 ## a minimal example (sort of)
@@ -112,10 +112,10 @@ def generate_data(tn_lfv_seq, timestep, ratio_validation):
 
     return data
 
-def build_model(len_lfv, hidden_size, timestep):
+def build_model(len_lfv, hidden_size, timestep, rnn_cell):
     print('Build model...')
     model = Sequential()
-    model.add(RNN(hidden_size, 
+    model.add(rnn_cell(hidden_size, 
                   input_shape=(timestep, len_lfv),
                   activation='linear'))
     model.add(layers.Dense(len_lfv))
@@ -123,5 +123,5 @@ def build_model(len_lfv, hidden_size, timestep):
                   optimizer='adam',
                   metrics=['mse', 'mae', 'mape', 'cosine'])
 
-    # print(model.summary())
+    print(model.summary())
     return model
