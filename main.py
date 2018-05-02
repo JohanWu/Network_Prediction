@@ -299,7 +299,7 @@ def main():
 
 	## link prediction for FIR
 	sorted_links = link_score_lfv(predicted_lfv_sefir)
-	pre_all, rec_all, pre_stationary, rec_stationary, pre_moving, rec_moving = link_prediction_lfv(sorted_links, network_sequence[-1])
+	pre_all, rec_all, pre_stationary, rec_stationary, pre_moving, rec_moving = link_prediction(sorted_links, network_sequence[-1])
 	with open('./Results/Precision_all_SEFIR.txt', 'a') as f:
 		f.write(str(pre_all)+'\n')
 	with open('./Results/Recall_all_SEFIR.txt', 'a') as f:
@@ -315,7 +315,7 @@ def main():
 	
 	## link prediction for RNN (GRU)
 	sorted_links = link_score_lfv(predicted_lfv_sernn_gru)
-	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction_lfv(sorted_links, network_sequence[-1])
+	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction(sorted_links, network_sequence[-1])
 	with open('./Results/Precision_all_SERNN_GRU.txt', 'a') as f:
 		f.write(str(pre_all)+'\n')
 	with open('./Results/Recall_all_SERNN_GRU.txt', 'a') as f:
@@ -331,7 +331,7 @@ def main():
 	
 	## link prediction for RNN (LSTM)
 	sorted_links = link_score_lfv(predicted_lfv_sernn_lstm)
-	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction_lfv(sorted_links, network_sequence[-1])
+	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction(sorted_links, network_sequence[-1])
 	with open('./Results/Precision_all_SERNN_LSTM.txt', 'a') as f:
 		f.write(str(pre_all)+'\n')
 	with open('./Results/Recall_all_SERNN_LSTM.txt', 'a') as f:
@@ -344,10 +344,10 @@ def main():
 		f.write(str(pre_moving)+'\n')
 	with open('./Results/Recall_moving_SERNN_LSTM.txt', 'a') as f:
 		f.write(str(rec_moving)+'\n')
-	
+
 	## link prediction by the commom neigbors of previous network.
 	sorted_links = link_score_cn(network_sequence[-2], network_sequence[-1])
-	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction_cn(sorted_links, network_sequence[-1])
+	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction(sorted_links, network_sequence[-1])
 	with open('./Results/Precision_all_CN.txt', 'a') as f:
 		f.write(str(pre_all)+'\n')
 	with open('./Results/Recall_all_CN.txt', 'a') as f:
