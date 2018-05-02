@@ -1,8 +1,8 @@
 #!/bin/bash
-iter=25
+iter=10
 
 rm -f *~
-rm -f *.txt
+rm -f ./Results/*.txt
 
 for (( i=0; i<iter; i=i+1 ))
 do
