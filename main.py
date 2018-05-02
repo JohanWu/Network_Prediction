@@ -37,7 +37,7 @@ EPOCHS = 30
 
 ## top-K for link prediction
 K_ALL = [i for i in range(100, 5001, 100)]
-K_M_S = [i for i in range(5, 101, 5)]
+K_NODE = [i for i in range(5, 101, 5)]
 
 def laplacian_rnn():
 	pass
@@ -130,7 +130,45 @@ def community_prediction(predicted_lfv, actual_lfv ):
 
 	return nmi
 
-def link_prediction(predicted_lfv, actual_network):
+def top_k_precision_recall_all(k, sorted_links, actual_network):
+	correct = 0
+	for i, link in enumerate(sorted_links):
+		if i < k:
+			if link[0] in actual_network.edges():
+				correct += 1
+		else:
+			break
+	# print(correct)
+
+	precision = correct/k
+	recall = correct/len(actual_network.edges())
+
+	return precision, recall
+
+def top_k_precision_recall_node(k, sorted_links, actual_network, node):
+	## find out the degrees of the node.
+	degree = 0
+	for link in actual_network.edges():
+		if node in link:
+			degree += 1
+	correct, i = 0, 0
+	for link in sorted_links:
+		if i < k:
+			if node in link[0]:	# link connecting with the node
+				# print(link)
+				i += 1
+				if link[0] in actual_network.edges():
+					correct += 1
+				# print(i, correct)
+				# input()
+		else:
+			break
+	precision = correct/k
+	recall = correct/degree
+
+	return precision, recall
+
+def link_prediction(sorted_links, actual_network):
 	'''Do link prediction tasks.
 
 	1. link prediction for the top-K links in the network.
@@ -140,72 +178,55 @@ def link_prediction(predicted_lfv, actual_network):
 	precision_all, precision_moving, precision_stationary = list(), list(), list()
 	recall_all, recall_moving, recall_stationary = list(), list(), list()
 
-	## Compute similarity scores for all links
-	all_links = dict()
-	for i, lfv1 in enumerate(predicted_lfv):
-		for j, lfv2 in enumerate(predicted_lfv):
-			if i < j:
-				all_links[(i, j)] = np.dot(lfv1, lfv2)/(math.sqrt(np.dot(lfv1, lfv1))*math.sqrt(np.dot(lfv2, lfv2)))
-	sorted_links = sorted(all_links.items(), key=operator.itemgetter(1), reverse=True)
-	## link prediction for the network
+	## link prediction for the whole network
 	for k in K_ALL:
-		correct = 0
-		for i, link in enumerate(sorted_links):
-			if i < k:
-				# print(link[0])
-				# print(actual_network.edges())
-				if link[0] in actual_network.edges():
-					correct += 1
-			else:
-				break
-		# print(correct)
-		precision_all.append(correct/k)
-		recall_all.append(correct/len(actual_network.edges()))
+		pre, rec = top_k_precision_recall_all(k, sorted_links, actual_network)
+		precision_all.append(pre)
+		recall_all.append(rec)
 	print('pre_all:', precision_all)
 	print('rec_all:', recall_all)
 
-	### link prediction for the stationary node (node 0) and for the moving node (node 1)
-	## find out the degrees of stationary node (0) and moving node (1).
-	degree_s, degree_m = 0, 0
-	for link in actual_network.edges():
-		if 0 in link:
-			degree_s += 1
-		if 1 in link:
-			degree_m += 1
-	# print(degree_s, degree_m)
-	## link prediction
-	for k in K_M_S:
-		correct_s, correct_m, i_s, i_m = 0, 0, 0, 0
-		for link in sorted_links:
-			if i_s < k:
-				if 0 in link[0]:	# link connecting with stationary node
-					# print('s', link)
-					i_s += 1
-					if link[0] in actual_network.edges():
-						correct_s += 1
-					# print(i_s, correct_s)
-					# input()
-			if i_m < k:
-				if 1 in link[0]:	# link connecting with moving node
-					# print('m', link)
-					i_m += 1
-					if link[0] in actual_network.edges():
-						correct_m += 1
-					# print(i_m, correct_m)
-					# input()
-			if not (i_s < k or i_m < k):
-				break
-		# print(correct_s, correct_m)
-		precision_stationary.append(correct_s/k)
-		recall_stationary.append(correct_s/degree_s)
-		precision_moving.append(correct_m/k)
-		recall_moving.append(correct_m/degree_m)
+	## link prediction for the stationary node (node 0) and for the moving node (node 1)
+	for k in K_NODE:
+		## for the stationary node (node 0)
+		pre, rec = top_k_precision_recall_node(k, sorted_links, actual_network, 0)
+		precision_stationary.append(pre)
+		recall_stationary.append(rec)
+		## for the moving node (node 1)
+		pre, rec = top_k_precision_recall_node(k, sorted_links, actual_network, 1)
+		precision_moving.append(pre)
+		recall_moving.append(rec)
 	print('pre_sta:', precision_stationary)
 	print('rec_sta:', recall_stationary)
 	print('pre_mov:', precision_moving)
 	print('rec_mov:', recall_moving)
 
 	return precision_all, recall_all, precision_stationary, recall_stationary, precision_moving, recall_moving
+
+def link_score_lfv(predicted_lfv):
+	'''Generate scores for all link paris by computing their cosine similarities based on the latent feature vectors.
+	'''
+	all_links = dict()
+	for i, lfv1 in enumerate(predicted_lfv):
+		for j, lfv2 in enumerate(predicted_lfv):
+			if i < j:
+				all_links[(i, j)] = np.dot(lfv1, lfv2)/(math.sqrt(np.dot(lfv1, lfv1))*math.sqrt(np.dot(lfv2, lfv2)))
+	sorted_links = sorted(all_links.items(), key=operator.itemgetter(1), reverse=True)
+	return sorted_links
+
+def link_score_cn(previous_network, actual_network):
+	'''Generate scores for all link pairs by counting the number of their commmon neighbors.
+	'''
+	all_links = dict()
+	for n1 in previous_network.nodes():
+		for n2 in previous_network.nodes():
+			if n1 < n2:
+				# print(n1, set(previous_network.neighbors(n1)))
+				# print(n2, set(previous_network.neighbors(n2)))
+				all_links[(n1, n2)] = len(set(previous_network.neighbors(n1)).intersection(set(previous_network.neighbors(n2))))
+	sorted_links = sorted(all_links.items(), key=operator.itemgetter(1), reverse=True)
+	return sorted_links
+
 
 def plot_loss(i, history):
     ## list all data in history
@@ -276,8 +297,9 @@ def main():
 	with open('./Results/NMI_SERNN_LSTM.txt', 'a') as nmi_file:
 		nmi_file.write(str(nmi_sernn_lstm)+'\n')
 
-	## link prediction for different predictive models
-	pre_all, rec_all, pre_stationary, rec_stationary, pre_moving, rec_moving = link_prediction(predicted_lfv_sefir, network_sequence[-1])
+	## link prediction for FIR
+	sorted_links = link_score_lfv(predicted_lfv_sefir)
+	pre_all, rec_all, pre_stationary, rec_stationary, pre_moving, rec_moving = link_prediction_lfv(sorted_links, network_sequence[-1])
 	with open('./Results/Precision_all_SEFIR.txt', 'a') as f:
 		f.write(str(pre_all)+'\n')
 	with open('./Results/Recall_all_SEFIR.txt', 'a') as f:
@@ -291,7 +313,9 @@ def main():
 	with open('./Results/Recall_moving_SEFIR.txt', 'a') as f:
 		f.write(str(rec_moving)+'\n')
 	
-	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction(predicted_lfv_sernn_gru, network_sequence[-1])
+	## link prediction for RNN (GRU)
+	sorted_links = link_score_lfv(predicted_lfv_sernn_gru)
+	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction_lfv(sorted_links, network_sequence[-1])
 	with open('./Results/Precision_all_SERNN_GRU.txt', 'a') as f:
 		f.write(str(pre_all)+'\n')
 	with open('./Results/Recall_all_SERNN_GRU.txt', 'a') as f:
@@ -305,7 +329,9 @@ def main():
 	with open('./Results/Recall_moving_SERNN_GRU.txt', 'a') as f:
 		f.write(str(rec_moving)+'\n')
 	
-	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction(predicted_lfv_sernn_lstm, network_sequence[-1])
+	## link prediction for RNN (LSTM)
+	sorted_links = link_score_lfv(predicted_lfv_sernn_lstm)
+	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction_lfv(sorted_links, network_sequence[-1])
 	with open('./Results/Precision_all_SERNN_LSTM.txt', 'a') as f:
 		f.write(str(pre_all)+'\n')
 	with open('./Results/Recall_all_SERNN_LSTM.txt', 'a') as f:
@@ -319,9 +345,32 @@ def main():
 	with open('./Results/Recall_moving_SERNN_LSTM.txt', 'a') as f:
 		f.write(str(rec_moving)+'\n')
 	
-	## link prediction by the commom neigbors approach based on the previous network
-		
+	## link prediction by the commom neigbors of previous network.
+	sorted_links = link_score_cn(network_sequence[-2], network_sequence[-1])
+	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction_cn(sorted_links, network_sequence[-1])
+	with open('./Results/Precision_all_CN.txt', 'a') as f:
+		f.write(str(pre_all)+'\n')
+	with open('./Results/Recall_all_CN.txt', 'a') as f:
+		f.write(str(rec_all)+'\n')
+	with open('./Results/Precision_stationary_CN.txt', 'a') as f:
+		f.write(str(pre_stationary)+'\n')
+	with open('./Results/Recall_stationary_CN.txt', 'a') as f:
+		f.write(str(rec_stationary)+'\n')
+	with open('./Results/Precision_moving_CN.txt', 'a') as f:
+		f.write(str(pre_moving)+'\n')
+	with open('./Results/Recall_moving_CN.txt', 'a') as f:
+		f.write(str(rec_moving)+'\n')	
+
 	## link prediction by previous network
+	link_in_T = 0
+	for link in network_sequence[-2].edges():
+		if link in network_sequence[-1].edges():
+			link_in_T += 1
+	print(link_in_T)
+	with open('./Results/Precision_all_Previous.txt', 'a') as f:
+		f.write(str(link_in_T/len(network_sequence[-2].edges()))+'\n')
+	with open('./Results/Recall_all_Previous.txt', 'a') as f:
+		f.write(str(link_in_T/len(network_sequence[-1].edges()))+'\n')
 
 
 if __name__ == '__main__':
