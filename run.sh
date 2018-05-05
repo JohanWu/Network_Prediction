@@ -1,5 +1,5 @@
 #!/bin/bash
-iter=10
+iter=50
 
 rm -f *~
 rm -f ./Results/*.txt
