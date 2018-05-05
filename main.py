@@ -31,7 +31,7 @@ TIMESTEP = 4           # the length of input sequence
 RATIO_VALIDATION = 0.1 # the ratio of portion of samples as validation set
 
 ## RNN Hyperparameters
-HIDDEN_SIZE = 30
+HIDDEN_SIZE = 20
 BATCH_SIZE = 10
 EPOCHS = 30
 
@@ -183,8 +183,8 @@ def link_prediction(sorted_links, actual_network):
 		pre, rec = top_k_precision_recall_all(k, sorted_links, actual_network)
 		precision_all.append(pre)
 		recall_all.append(rec)
-	print('pre_all:', precision_all)
-	print('rec_all:', recall_all)
+	# print('pre_all:', precision_all)
+	# print('rec_all:', recall_all)
 
 	## link prediction for the stationary node (node 0) and for the moving node (node 1)
 	for k in K_NODE:
@@ -196,10 +196,10 @@ def link_prediction(sorted_links, actual_network):
 		pre, rec = top_k_precision_recall_node(k, sorted_links, actual_network, 1)
 		precision_moving.append(pre)
 		recall_moving.append(rec)
-	print('pre_sta:', precision_stationary)
-	print('rec_sta:', recall_stationary)
-	print('pre_mov:', precision_moving)
-	print('rec_mov:', recall_moving)
+	# print('pre_sta:', precision_stationary)
+	# print('rec_sta:', recall_stationary)
+	# print('pre_mov:', precision_moving)
+	# print('rec_mov:', recall_moving)
 
 	return precision_all, recall_all, precision_stationary, recall_stationary, precision_moving, recall_moving
 
@@ -297,6 +297,7 @@ def main():
 	with open('./Results/NMI_SERNN_LSTM.txt', 'a') as nmi_file:
 		nmi_file.write(str(nmi_sernn_lstm)+'\n')
 
+
 	## link prediction for FIR
 	sorted_links = link_score_lfv(predicted_lfv_sefir)
 	pre_all, rec_all, pre_stationary, rec_stationary, pre_moving, rec_moving = link_prediction(sorted_links, network_sequence[-1])
@@ -312,7 +313,7 @@ def main():
 		f.write(str(pre_moving)+'\n')
 	with open('./Results/Recall_moving_SEFIR.txt', 'a') as f:
 		f.write(str(rec_moving)+'\n')
-	
+
 	## link prediction for RNN (GRU)
 	sorted_links = link_score_lfv(predicted_lfv_sernn_gru)
 	pre_all, rec_all, pre_moving, rec_moving, pre_stationary, rec_stationary = link_prediction(sorted_links, network_sequence[-1])
@@ -361,17 +362,52 @@ def main():
 	with open('./Results/Recall_moving_CN.txt', 'a') as f:
 		f.write(str(rec_moving)+'\n')	
 
-	## link prediction by previous network
+	## link prediction by previous network for the entire network
 	link_in_T = 0
 	for link in network_sequence[-2].edges():
 		if link in network_sequence[-1].edges():
 			link_in_T += 1
-	print(link_in_T)
+	# print(link_in_T)
 	with open('./Results/Precision_all_Previous.txt', 'a') as f:
 		f.write(str(link_in_T/len(network_sequence[-2].edges()))+'\n')
 	with open('./Results/Recall_all_Previous.txt', 'a') as f:
 		f.write(str(link_in_T/len(network_sequence[-1].edges()))+'\n')
 
+	## link prediction by previous network for the stationary node (node 0)
+	link_in_T = 0
+	guess_link = 0	# links of node 0 in the network at time T-1
+	actual_link = 0	# links of node 0 in the network at time T
+	for link in network_sequence[-2].edges():
+		if 0 in link:
+			# print(link)
+			guess_link += 1
+			if link in network_sequence[-1].edges():
+				link_in_T += 1
+	for link in network_sequence[-1].edges():
+		if 0 in link:
+			actual_link += 1
+	with open('./Results/Precision_stationary_Previous.txt', 'a') as f:
+		f.write(str(link_in_T/guess_link)+'\n')
+	with open('./Results/Recall_stationary_Previous.txt', 'a') as f:
+		f.write(str(link_in_T/actual_link)+'\n')
+
+	## link prediction by previous network for the moving node (node 1)
+	link_in_T = 0
+	guess_link = 0	# links of node 1 in the network at time T-1
+	actual_link = 0	# links of node 1 in the network at time T
+	for link in network_sequence[-2].edges():
+		if 1 in link:
+			# print(link)
+			guess_link += 1
+			if link in network_sequence[-1].edges():
+				link_in_T += 1
+	for link in network_sequence[-1].edges():
+		if 1 in link:
+			actual_link += 1
+	with open('./Results/Precision_moving_Previous.txt', 'a') as f:
+		f.write(str(link_in_T/guess_link)+'\n')
+	with open('./Results/Recall_moving_Previous.txt', 'a') as f:
+		f.write(str(link_in_T/actual_link)+'\n')
 
 if __name__ == '__main__':
 	main()
