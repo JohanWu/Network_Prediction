@@ -2,7 +2,7 @@
 iter=50
 
 rm -f *~
-rm -f ./Results/*.txt
+rm -rf Results/
 
 for (( i=0; i<iter; i=i+1 ))
 do
