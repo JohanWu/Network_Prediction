@@ -32,7 +32,7 @@ RATIO_VALIDATION = 0.1 # the ratio of portion of samples as validation set
 
 ## RNN Hyperparameters
 HIDDEN_SIZE = 20
-BATCH_SIZE = 10
+BATCH_SIZE = 100
 EPOCHS = 30
 
 ## top-K for link prediction
