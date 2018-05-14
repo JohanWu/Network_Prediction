@@ -10,6 +10,7 @@ from IPython.display import clear_output
 # import tensorflow
 # print('tensorflow version:', tensorflow.__version__)
 
+ADD_LAYERS = 0
 
 ## Different RNN cells: GRU or SimpleRNN.
 # RNN = layers.GRU
@@ -115,11 +116,14 @@ def generate_data(tn_lfv_seq, timestep, ratio_validation):
 def build_model(len_lfv, hidden_size, timestep, rnn_cell):
     print('Build model...')
     model = Sequential()
+    model.add(rnn_cell(hidden_size, input_shape=(timestep, len_lfv), activation='linear', return_sequences=True))
+    for _ in range(ADD_LAYERS):
+        model.add(rnn_cell(hidden_size, activation='linear', return_sequences=True))
     model.add(rnn_cell(hidden_size, 
-                  input_shape=(timestep, len_lfv),
+#                  input_shape=(timestep, len_lfv),
                   activation='linear'))
     model.add(layers.Dense(len_lfv))
-    model.compile(loss='cosine', #cosine_proximity, kullback_leibler_divergence
+    model.compile(loss='mse', #cosine_proximity, kullback_leibler_divergence
                   optimizer='adam',
                   metrics=['mse', 'mae', 'mape', 'cosine'])
 
