@@ -31,7 +31,7 @@ TIMESTEP = 4           # the length of input sequence
 RATIO_VALIDATION = 0.1 # the ratio of portion of samples as validation set
 
 ## RNN Hyperparameters
-HIDDEN_SIZE = 20
+HIDDEN_SIZE = 10
 BATCH_SIZE = 100
 EPOCHS = 30
 
