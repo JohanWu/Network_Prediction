@@ -84,7 +84,7 @@ def generate_data(tn_lfv_seq, timestep, ratio_validation):
         # print((nt_lfv_seq[n]))
         ## get data samples from the sequence
         ## the length of the subsequence of latent feature vectors is timestep+1. The last vector is the vector for the label.
-        samples = list()        
+        samples = list()
         for t in range(timestep, nt_lfv_seq.shape[1]-1):
             samples.append(nt_lfv_seq[n][t-timestep:t+1])
         samples = np.array(samples)
