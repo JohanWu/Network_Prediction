@@ -113,7 +113,7 @@ def generate_data(tn_lfv_seq, timestep, ratio_validation):
 
     return data
 
-def build_model(len_lfv, hidden_size, timestep, rnn_cell):
+def build_model(len_lfv, hidden_size, timestep, rnn_cell, activation_function='linear', loss_function='mse'):
     print('Build model...')
     model = Sequential()
     ## Multiple hidden layers
@@ -124,9 +124,9 @@ def build_model(len_lfv, hidden_size, timestep, rnn_cell):
     '''
     model.add(rnn_cell(hidden_size, 
         input_shape=(timestep, len_lfv),
-        activation='linear'))
+        activation=activation_function))
     model.add(layers.Dense(len_lfv))
-    model.compile(loss='mse', #cosine_proximity, kullback_leibler_divergence
+    model.compile(loss=loss_function, #cosine_proximity, kullback_leibler_divergence
                   optimizer='adam',
                   metrics=['mse', 'mae', 'mape', 'cosine'])
 
