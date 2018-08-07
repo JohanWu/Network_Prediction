@@ -28,12 +28,12 @@ LEN_LFV = 4				# uaually equals NUM_CLUSTERS
 
 
 ## Parameters for RNN model
-TIMESTEP = 12           # the length of input sequence
+TIMESTEP = 12          # the length of input sequence
 RATIO_VALIDATION = 0.1 # the ratio of portion of samples as validation set
 
 ## RNN Hyperparameters
 HIDDEN_SIZE = 100
-BATCH_SIZE = 100
+BATCH_SIZE = 3000       # 1/10 numbers of samples
 EPOCHS = 30
 
 ## top-K for link prediction
@@ -41,8 +41,11 @@ K_ALL = [i for i in range(100, 5001, 100)]
 K_NODE = [i for i in range(5, 101, 5)]
 
 print(sys.argv[1])
-activation_function = sys.argv[1]
-loss_function = 'mse'	#sys.argv[1]
+activation_function = sys.argv[1] #'relu'
+loss_function = 'mse'   #sys.argv[1]
+
+path = './Results/{}/'.format(sys.argv[1])
+print(path)
 
 
 def laplacian_rnn():
@@ -268,12 +271,12 @@ def main():
 	## convert the network sequence to a nodes' latent feature vector sequence (lfv_sequence).
 	lfv_sequence = sd.generate_latent_feature_vector_sequence(network_sequence, LEN_LFV)
 	print(len(lfv_sequence))
-	
+
 	## raw data
 	time_node_lfv = np.array(lfv_sequence)
 
 	## creat the folder Results/ if it doesn't exist
-	pathlib.Path('./Results/{}_{}/'.format(activation_function, loss_function)).mkdir(parents=True, exist_ok=True) 
+	pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
 
 	## generating predicted lfv by different predictive models
@@ -292,49 +295,50 @@ def main():
 	## Running time for each model 
 	model_name = ['fir', 'rnn_gru', 'rnn_lstm', 'rnn_simple']
 	for i, name in enumerate(model_name):
-		with open('./Results/{}_{}/Training_time_{}.txt'.format(activation_function, loss_function, name), 'a') as time_file:
+		with open(path+'Training_time_{}.txt'.format(name), 'a') as time_file:
 			time_file.write(str(time_point[i+1]-time_point[i])+'\n')
 
 	## Evaluation
 	model_name = ['SEFIR', 'SERNN_GRU', 'SERNN_LSTM', 'SERNN_Simple']
 	for i, p_lfv in enumerate(predicted_lfv_):
 		## community prediction for different predictive models
-		with open('./Results/{}_{}/NMI_{}.txt'.format(activation_function, loss_function, model_name[i]), 'a') as nmi_file:
+		with open(path+'NMI_{}.txt'.format(model_name[i]), 'a') as nmi_file:
 			nmi_ = community_prediction(p_lfv, time_node_lfv[-1])
 			nmi_file.write(str(nmi_)+'\n')
 
 		## link prediction for different predictive models
 		sorted_links = link_score_lfv(p_lfv)
 		pre_all, rec_all, pre_stationary, rec_stationary, pre_moving, rec_moving = link_prediction(sorted_links, network_sequence[-1])
-		with open('./Results/{}_{}/Precision_all_{}.txt'.format(activation_function, loss_function, model_name[i]), 'a') as f:
+		with open(path+'Precision_all_{}.txt'.format(model_name[i]), 'a') as f:
 			f.write(str(pre_all)+'\n')
-		with open('./Results/{}_{}/Recall_all_{}.txt'.format(activation_function, loss_function, model_name[i]), 'a') as f:
+		with open(path+'Recall_all_{}.txt'.format(model_name[i]), 'a') as f:
 			f.write(str(rec_all)+'\n')
-		with open('./Results/{}_{}/Precision_stationary_{}.txt'.format(activation_function, loss_function, model_name[i]), 'a') as f:
+		with open(path+'Precision_stationary_{}.txt'.format(model_name[i]), 'a') as f:
 			f.write(str(pre_stationary)+'\n')
-		with open('./Results/{}_{}/Recall_stationary_{}.txt'.format(activation_function, loss_function, model_name[i]), 'a') as f:
+		with open(path+'Recall_stationary_{}.txt'.format(model_name[i]), 'a') as f:
 			f.write(str(rec_stationary)+'\n')
-		with open('./Results/{}_{}/Precision_moving_{}.txt'.format(activation_function, loss_function, model_name[i]), 'a') as f:
+		with open(path+'Precision_moving_{}.txt'.format(model_name[i]), 'a') as f:
 			f.write(str(pre_moving)+'\n')
-		with open('./Results/{}_{}/Recall_moving_{}.txt'.format(activation_function, loss_function, model_name[i]), 'a') as f:
+		with open(path+'Recall_moving_{}.txt'.format(model_name[i]), 'a') as f:
 			f.write(str(rec_moving)+'\n')
 
 
 	## link prediction by the commom neigbors of previous network.
 	sorted_links = link_score_cn(network_sequence[-2], network_sequence[-1])
 	pre_all, rec_all, pre_stationary, rec_stationary, pre_moving, rec_moving = link_prediction(sorted_links, network_sequence[-1])
-	with open('./Results/{}_{}/Precision_all_CN.txt'.format(activation_function, loss_function), 'a') as f:
+	with open(path+'Precision_all_CN.txt', 'a') as f:
 		f.write(str(pre_all)+'\n')
-	with open('./Results/{}_{}/Recall_all_CN.txt'.format(activation_function, loss_function), 'a') as f:
+	with open(path+'Recall_all_CN.txt', 'a') as f:
 		f.write(str(rec_all)+'\n')
-	with open('./Results/{}_{}/Precision_stationary_CN.txt'.format(activation_function, loss_function), 'a') as f:
+	with open(path+'Precision_stationary_CN.txt', 'a') as f:
 		f.write(str(pre_stationary)+'\n')
-	with open('./Results/{}_{}/Recall_stationary_CN.txt'.format(activation_function, loss_function), 'a') as f:
+	with open(path+'Recall_stationary_CN.txt', 'a') as f:
 		f.write(str(rec_stationary)+'\n')
-	with open('./Results/{}_{}/Precision_moving_CN.txt'.format(activation_function, loss_function), 'a') as f:
+	with open(path+'Precision_moving_CN.txt', 'a') as f:
 		f.write(str(pre_moving)+'\n')
-	with open('./Results/{}_{}/Recall_moving_CN.txt'.format(activation_function, loss_function), 'a') as f:
-		f.write(str(rec_moving)+'\n')	
+	with open(path+'Recall_moving_CN.txt', 'a') as f:
+		f.write(str(rec_moving)+'\n')
+	
 
 
 	## link prediction by previous network for the entire network
@@ -343,9 +347,9 @@ def main():
 		if link in network_sequence[-1].edges():
 			link_in_T += 1
 	# print(link_in_T)
-	with open('./Results/{}_{}/Precision_all_Previous.txt'.format(activation_function, loss_function), 'a') as f:
+	with open(path+'Precision_all_Previous.txt', 'a') as f:
 		f.write(str(link_in_T/len(network_sequence[-2].edges()))+'\n')
-	with open('./Results/{}_{}/Recall_all_Previous.txt'.format(activation_function, loss_function), 'a') as f:
+	with open(path+'Recall_all_Previous.txt', 'a') as f:
 		f.write(str(link_in_T/len(network_sequence[-1].edges()))+'\n')
 
 	## link prediction by previous network for the stationary node (node 0) and the moving node (node 1)
@@ -364,9 +368,9 @@ def main():
 		for link in network_sequence[-1].edges():
 			if i in link:
 				actual_link += 1
-		with open('./Results/{}_{}/Precision_{}_Previous.txt'.format(activation_function, loss_function, t), 'a') as f:
+		with open(path+'Precision_{}_Previous.txt'.format(t), 'a') as f:
 			f.write(str(link_in_T/guess_link)+'\n')
-		with open('./Results/{}_{}/Recall_{}_Previous.txt'.format(activation_function, loss_function, t), 'a') as f:
+		with open(path+'Recall_{}_Previous.txt'.format(t), 'a') as f:
 			f.write(str(link_in_T/actual_link)+'\n')
 
 
